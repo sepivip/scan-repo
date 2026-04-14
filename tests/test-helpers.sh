@@ -74,4 +74,30 @@ assert_false 'has_suspicious_pattern "node-gyp rebuild"' \
 assert_false 'has_suspicious_pattern "echo hello && exit 0"' \
     "suspicious: harmless echo → false"
 
+# --- is_forbidden_executable ---
+assert_true 'is_forbidden_executable "bin/runner.exe"' \
+    "forbidden: .exe"
+assert_true 'is_forbidden_executable "Setup.MSI"' \
+    "forbidden: .msi case-insensitive"
+assert_true 'is_forbidden_executable "pkg/foo.deb"' \
+    "forbidden: .deb"
+assert_false 'is_forbidden_executable "lib/native.so"' \
+    "forbidden: .so is not forbidden"
+assert_false 'is_forbidden_executable "src/main.rs"' \
+    "forbidden: source file → false"
+
+# --- is_in_recognized_build_path ---
+assert_true 'is_in_recognized_build_path "dist/bundle.js" "package.json"' \
+    "build path: dist/ + package.json"
+assert_true 'is_in_recognized_build_path "target/release/foo" "Cargo.toml"' \
+    "build path: target/ + Cargo.toml"
+assert_true 'is_in_recognized_build_path "bin/foo.exe" "go.mod"' \
+    "build path: bin/ + go.mod"
+assert_false 'is_in_recognized_build_path "dist/bundle.js" "Cargo.toml"' \
+    "build path: dist/ without Node marker → false"
+assert_false 'is_in_recognized_build_path "target/foo" "package.json"' \
+    "build path: target/ without Cargo.toml → false"
+assert_false 'is_in_recognized_build_path "src/foo.js" "package.json"' \
+    "build path: src/ is not a build path"
+
 report

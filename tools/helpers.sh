@@ -104,3 +104,34 @@ has_suspicious_pattern() {
     fi
     return 1
 }
+
+# is_forbidden_executable <path>
+# Returns 0 if the path ends with one of the forbidden installer extensions.
+is_forbidden_executable() {
+    local lower
+    lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+    case "$lower" in
+        *.exe|*.msi|*.deb|*.rpm|*.pkg|*.dmg) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# is_in_recognized_build_path <path> <ecosystem_markers_string>
+is_in_recognized_build_path() {
+    local path="$1" markers="$2"
+    case "$path" in
+        dist/*|build/*|out/*)
+            printf '%s' "$markers" | grep -qE '(package\.json|webpack\.config|vite\.config|rollup\.config)' && return 0
+            ;;
+        target/*)
+            printf '%s' "$markers" | grep -qE 'Cargo\.toml' && return 0
+            ;;
+        bin/*)
+            printf '%s' "$markers" | grep -qE '(Makefile|build\.sh|go\.mod)' && return 0
+            ;;
+        _output/*)
+            printf '%s' "$markers" | grep -qE '(Makefile|go\.mod)' && return 0
+            ;;
+    esac
+    return 1
+}
