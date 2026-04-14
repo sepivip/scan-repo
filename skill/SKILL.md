@@ -27,3 +27,53 @@ explains them in the next turn.
 **Output is a soft, deflating verdict** — never a hard "SAFE" /
 "MALICIOUS" call. The verdict label always carries its own caveat in
 the wording. See §Verdict & output below.
+
+## Setup
+
+Source the helpers (assumes installed location, with a fallback for local dev):
+
+```bash
+HELPERS="${SCAN_REPO_HELPERS:-$HOME/.claude/skills/scan-repo/helpers.sh}"
+[[ -f "$HELPERS" ]] || { echo "scan-repo: helpers.sh not found — run tools/install.sh" >&2; exit 1; }
+source "$HELPERS"
+```
+
+## Layered gating (run on every invocation)
+
+### Step 0 — URL extraction
+
+Extract a github.com URL from the input. If none, abort silently (produce no output).
+
+```bash
+TARGET="$(extract_url "$INPUT")"
+[[ -z "$TARGET" ]] && exit 0
+OWNER_REPO="${TARGET%@*}"
+BRANCH="${TARGET##*@}"
+[[ "$BRANCH" == "$OWNER_REPO" ]] && BRANCH=""
+```
+
+### Step 1 — Intent & mode detection
+
+Read the user's message naturally. Decide:
+
+- **MODE=full** — the user *explicitly* asked for a deep / full / complete audit, said "run all checks", or invoked this skill via the `/scan-repo` slash command (the command's file content says "Run a full audit..."). If the invocation context contains phrases like "full audit", "run all 8 checks", "explicit audit", treat as full.
+- **MODE=quick** — the user expressed install / clone / try / use intent ("should I install", "is it safe to", "can I trust", etc.), but did not request a full audit.
+- **Abort silently** — the user merely shared a URL for context, asked about an issue/PR, or referenced docs without install intent. Produce no output at all.
+
+This is a natural-language judgment — just read the message and decide.
+
+### Step 2 — Memoization check
+
+Claude-side responsibility: check conversation history for prior scan-repo activity on `{OWNER_REPO}@{BRANCH}` (default branch if BRANCH is empty). If a prior result exists in the conversation, emit one of:
+
+> *(scan-repo already ran a quick check on github.com/{OWNER_REPO} earlier in this conversation — verdict was [🟢|🟡]. For full audit run /scan-repo {URL})*
+
+> *(scan-repo already ran a full audit on github.com/{OWNER_REPO} earlier in this conversation — verdict was [🟢|🟡|🔴|⚪]. See prior message for findings.)*
+
+…and exit. Memoization is best-effort — after context compaction the prior result may be invisible and the skill will re-fire.
+
+### Step 3 — Branch resolution
+
+```bash
+[[ -z "$BRANCH" ]] && BRANCH="$(gh api "repos/$OWNER_REPO" --jq .default_branch)"
+```

@@ -16,4 +16,17 @@ assert_true "grep -q 'Do NOT use' '$SKILL'" \
 assert_true "grep -q 'reference the prior result' '$SKILL'" \
     "skill: description mentions memoization"
 
+assert_true "grep -q '## Layered gating' '$SKILL'" \
+    "skill: layered gating section"
+assert_true "grep -q 'Step 0 — URL extraction' '$SKILL'" \
+    "skill: gate step 0"
+assert_true "grep -q 'Step 1 — Intent' '$SKILL'" \
+    "skill: gate step 1 intent detection"
+assert_true "grep -q 'Step 2 — Memoization' '$SKILL'" \
+    "skill: gate step 2 memoization"
+assert_true "grep -q 'Step 3 — Branch resolution' '$SKILL'" \
+    "skill: gate step 3 branch resolution"
+assert_true "grep -q 'extract_url' '$SKILL'" \
+    "skill: calls extract_url helper"
+
 report
