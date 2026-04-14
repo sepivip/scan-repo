@@ -279,6 +279,83 @@ else
 fi
 ```
 
+### Check 3 — Stargazer sample (dual-page)
+
+```bash
+if [[ "$REPO_STARS" -lt 50 ]]; then
+    SKIPS=$((SKIPS+1))
+    FINDINGS+=("· Stargazer sample skipped — repo has only ${REPO_STARS} stars")
+else
+    PER_PAGE=20
+    LAST_PAGE=$(( (REPO_STARS + PER_PAGE - 1) / PER_PAGE ))
+    [[ "$LAST_PAGE" -lt 2 ]] && LAST_PAGE=2
+    MID_PAGE=$(( RANDOM % (LAST_PAGE - 1) + 2 ))
+
+    sample_one_page() {
+        local page="$1"
+        gh api "repos/$OWNER_REPO/stargazers?per_page=$PER_PAGE&page=$page" \
+            | jq -r '.[].login'
+    }
+
+    PAGE1_LOGINS="$(sample_one_page 1)"
+    PAGEN_LOGINS="$(sample_one_page "$MID_PAGE")"
+
+    classify_login() {
+        local login="$1"
+        local user_json
+        user_json="$(gh api "users/$login" 2>/dev/null)" || { echo ok; return; }
+        local created followers repos
+        created="$(echo "$user_json" | jq -r .created_at)"
+        followers="$(echo "$user_json" | jq -r .followers)"
+        repos="$(echo "$user_json"    | jq -r .public_repos)"
+        if is_empty_profile "$created" "$followers" "$repos"; then
+            echo empty
+        else
+            echo ok
+        fi
+    }
+
+    PAGE1_EMPTY=0; PAGE1_TOTAL=0
+    for l in $PAGE1_LOGINS; do
+        PAGE1_TOTAL=$((PAGE1_TOTAL+1))
+        [[ "$(classify_login "$l")" == "empty" ]] && PAGE1_EMPTY=$((PAGE1_EMPTY+1))
+    done
+    PAGEN_EMPTY=0; PAGEN_TOTAL=0
+    SAMPLE_LINKS=""
+    sample_count=0
+    for l in $PAGEN_LOGINS; do
+        PAGEN_TOTAL=$((PAGEN_TOTAL+1))
+        [[ "$(classify_login "$l")" == "empty" ]] && PAGEN_EMPTY=$((PAGEN_EMPTY+1))
+        if [[ "$sample_count" -lt 3 ]]; then
+            SAMPLE_LINKS="$SAMPLE_LINKS https://github.com/$l"
+            sample_count=$((sample_count+1))
+        fi
+    done
+
+    COMBINED_TOTAL=$((PAGE1_TOTAL + PAGEN_TOTAL))
+    COMBINED_EMPTY=$((PAGE1_EMPTY + PAGEN_EMPTY))
+    EMPTY_PCT=0
+    [[ "$COMBINED_TOTAL" -gt 0 ]] && EMPTY_PCT=$(( COMBINED_EMPTY * 100 / COMBINED_TOTAL ))
+
+    PAGE1_PCT=0; PAGEN_PCT=0
+    [[ "$PAGE1_TOTAL" -gt 0 ]] && PAGE1_PCT=$(( PAGE1_EMPTY * 100 / PAGE1_TOTAL ))
+    [[ "$PAGEN_TOTAL" -gt 0 ]] && PAGEN_PCT=$(( PAGEN_EMPTY * 100 / PAGEN_TOTAL ))
+
+    if [[ "$EMPTY_PCT" -ge 50 ]]; then
+        WARNS=$((WARNS+1))
+        HC_WARNS=$((HC_WARNS+1))
+        FINDINGS+=("⚠ ${EMPTY_PCT}% of sampled stargazers are empty profiles (${COMBINED_EMPTY}/${COMBINED_TOTAL}) — strong bot-star signal")
+        FINDINGS+=("     Examples:$SAMPLE_LINKS")
+    elif [[ "$EMPTY_PCT" -ge 30 ]] || { [[ "$PAGEN_PCT" -gt 0 ]] && [[ $((PAGE1_PCT * 10)) -gt $((PAGEN_PCT * 20)) ]]; }; then
+        WARNS=$((WARNS+1))
+        FINDINGS+=("⚠ ${EMPTY_PCT}% of sampled stargazers are empty profiles (recent-page rate ${PAGE1_PCT}%, random-page rate ${PAGEN_PCT}%)")
+        FINDINGS+=("     Examples:$SAMPLE_LINKS")
+    else
+        FINDINGS+=("✓ Stargazer sample: ${EMPTY_PCT}% empty profiles (within normal range)")
+    fi
+fi
+```
+
 ### Check 5 — Star history link
 
 ```bash

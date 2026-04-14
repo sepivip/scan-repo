@@ -61,4 +61,11 @@ assert_true "grep -q '### Check 5 — Star history link' '$SKILL'" \
 assert_true "grep -q 'star-history.com' '$SKILL'" \
     "skill: star-history URL emitted"
 
+assert_true "grep -q '### Check 3 — Stargazer sample' '$SKILL'" \
+    "skill: full check 3"
+assert_true "grep -q 'is_empty_profile' '$SKILL'" \
+    "skill: check 3 calls is_empty_profile"
+assert_true "grep -q 'HC_WARNS=\$((HC_WARNS+1))' '$SKILL'" \
+    "skill: check 3 sets high-confidence on >=50% empty"
+
 report
