@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/test-framework.sh"
+source "$SCRIPT_DIR/../tools/helpers.sh"
+
+# --- extract_url ---
+assert_eq "anthropics/claude-code" "$(extract_url 'https://github.com/anthropics/claude-code')" \
+    "extract_url: bare repo URL"
+assert_eq "facebook/react" "$(extract_url 'should I install https://github.com/facebook/react please')" \
+    "extract_url: URL embedded in sentence"
+assert_eq "owner/repo@dev" "$(extract_url 'https://github.com/owner/repo/tree/dev')" \
+    "extract_url: tree URL with branch"
+assert_eq "owner/repo@main" "$(extract_url 'https://github.com/owner/repo/blob/main/src/x.js')" \
+    "extract_url: blob URL with branch and path"
+assert_eq "owner/repo" "$(extract_url 'https://github.com/owner/repo.git')" \
+    "extract_url: strips .git suffix"
+assert_eq "" "$(extract_url 'just some text no url')" \
+    "extract_url: no URL returns empty"
+assert_eq "owner/repo" "$(extract_url 'gh repo clone owner/repo')" \
+    "extract_url: gh repo clone shorthand"
+
+# --- has_intent_token ---
+assert_true 'has_intent_token "should I install this?"' \
+    "has_intent_token: detects install"
+assert_true 'has_intent_token "is it safe to use?"' \
+    "has_intent_token: detects multi-word safe to"
+assert_true 'has_intent_token "Can I trust this repo"' \
+    "has_intent_token: case-insensitive"
+assert_false 'has_intent_token "here is a github url for reference"' \
+    "has_intent_token: no intent → false"
+assert_false 'has_intent_token "the installer downloaded fine"' \
+    "has_intent_token: installer (substring of install) → not a word match"
+
+report
