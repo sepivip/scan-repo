@@ -68,4 +68,19 @@ assert_true "grep -q 'is_empty_profile' '$SKILL'" \
 assert_true "grep -q 'HC_WARNS=\$((HC_WARNS+1))' '$SKILL'" \
     "skill: check 3 sets high-confidence on >=50% empty"
 
+assert_true "grep -q '### Check 6 — Install scripts (full)' '$SKILL'" \
+    "skill: full check 6"
+assert_true "grep -q '### Check 7 — Binaries in tree' '$SKILL'" \
+    "skill: full check 7"
+assert_true "grep -q '### Check 8 — Provenance' '$SKILL'" \
+    "skill: full check 8"
+assert_true "grep -q 'has_suspicious_pattern' '$SKILL'" \
+    "skill: check 6 calls suspicious pattern helper"
+assert_true "grep -q 'is_forbidden_executable' '$SKILL'" \
+    "skill: check 7 calls forbidden-extension helper"
+assert_true "grep -q 'is_in_recognized_build_path' '$SKILL'" \
+    "skill: check 7 calls build-path helper"
+assert_true "grep -q 'registry.npmjs.org' '$SKILL'" \
+    "skill: check 8 hits npm registry"
+
 report

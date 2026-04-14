@@ -361,3 +361,140 @@ fi
 ```bash
 FINDINGS+=("— Star history (eyeball): https://star-history.com/#${OWNER_REPO}&Date")
 ```
+
+### Check 6 — Install scripts (full)
+
+```bash
+inspect_node_hooks() {
+    local pkg="$1"
+    [[ -z "$pkg" ]] && return
+    for hook_name in preinstall install postinstall; do
+        local hook
+        hook="$(echo "$pkg" | jq -r ".scripts.$hook_name // empty")"
+        [[ -z "$hook" ]] && continue
+        if has_suspicious_pattern "$hook"; then
+            WARNS=$((WARNS+1))
+            HC_WARNS=$((HC_WARNS+1))
+            FINDINGS+=("⚠ $hook_name script contains suspicious pattern (high confidence):")
+            FINDINGS+=("     \"$hook\"")
+            FINDINGS+=("     (file: package.json)")
+        elif is_benign_install_hook "$hook"; then
+            FINDINGS+=("✓ $hook_name on benign allowlist: \"$hook\"")
+        else
+            WARNS=$((WARNS+1))
+            FINDINGS+=("⚠ $hook_name script not on benign allowlist:")
+            FINDINGS+=("     \"$hook\"")
+            FINDINGS+=("     (file: package.json)")
+        fi
+    done
+}
+
+CHECK6_RAN=0
+if echo " $ECOSYSTEMS " | grep -q ' node '; then
+    CHECK6_RAN=1
+    PKG_JSON="$(fetch_raw package.json)"
+    inspect_node_hooks "$PKG_JSON"
+fi
+
+if echo " $ECOSYSTEMS " | grep -q ' python '; then
+    CHECK6_RAN=1
+    SETUP_PY="$(fetch_raw setup.py)"
+    if [[ -n "$SETUP_PY" ]] && has_suspicious_pattern "$SETUP_PY"; then
+        WARNS=$((WARNS+1))
+        HC_WARNS=$((HC_WARNS+1))
+        FINDINGS+=("⚠ setup.py contains suspicious pattern (high confidence) — inspect manually")
+    fi
+fi
+
+if [[ "$CHECK6_RAN" -eq 0 ]]; then
+    SKIPS=$((SKIPS+1))
+    FINDINGS+=("· Install-script check skipped — no Node/Python manifest in repo root")
+fi
+
+FINDINGS+=("       (note: transitive deps not scanned — known v1 limitation)")
+```
+
+### Check 7 — Binaries in tree
+
+```bash
+TREE_JSON="$(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=1")"
+BIN_FOUND=0
+BIN_SHOWN=0
+TOTAL_BIN_HITS=0
+
+while IFS=$'\t' read -r path size; do
+    [[ -z "$path" ]] && continue
+    if is_forbidden_executable "$path"; then
+        TOTAL_BIN_HITS=$((TOTAL_BIN_HITS+1))
+        if is_in_recognized_build_path "$path" "$MARKERS"; then
+            note=" (in conventional build output for this project)"
+            HC_FLAG=0
+        else
+            note=""
+            HC_FLAG=1
+        fi
+        WARNS=$((WARNS+1))
+        [[ "$HC_FLAG" -eq 1 ]] && HC_WARNS=$((HC_WARNS+1))
+        if [[ "$BIN_SHOWN" -lt 5 ]]; then
+            FINDINGS+=("⚠ Forbidden executable in tree: $path$note")
+            BIN_SHOWN=$((BIN_SHOWN+1))
+        fi
+        BIN_FOUND=1
+    fi
+done < <(echo "$TREE_JSON" \
+    | jq -r '.tree[] | select(.type == "blob") | "\(.path)\t\(.size // 0)"')
+
+if [[ "$BIN_FOUND" -eq 1 && "$BIN_SHOWN" -lt "$TOTAL_BIN_HITS" ]]; then
+    FINDINGS+=("     (… and $((TOTAL_BIN_HITS - BIN_SHOWN)) more — list with: gh api repos/$OWNER_REPO/git/trees/$BRANCH?recursive=1)")
+fi
+[[ "$BIN_FOUND" -eq 0 ]] && FINDINGS+=("✓ No forbidden executables in tree")
+```
+
+### Check 8 — Provenance
+
+```bash
+CHECK8_RAN=0
+
+if echo " $ECOSYSTEMS " | grep -q ' node ' && [[ -n "${PKG_JSON:-}" ]]; then
+    CHECK8_RAN=1
+    NPM_NAME="$(echo "$PKG_JSON" | jq -r '.name // empty')"
+    if [[ -n "$NPM_NAME" ]]; then
+        NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+            "https://registry.npmjs.org/$NPM_NAME" 2>/dev/null)"
+        if [[ -n "$NPM_JSON" ]]; then
+            MAINTAINERS="$(echo "$NPM_JSON" | jq -r '.maintainers[]?.name' | sort -u)"
+            CONTRIBS="$(gh api "repos/$OWNER_REPO/contributors?per_page=30" \
+                        | jq -r '.[].login' | sort -u)"
+            OWNER="${OWNER_REPO%%/*}"
+            OVERLAP=0
+            for m in $MAINTAINERS; do
+                [[ "$m" == "$OWNER" ]] && OVERLAP=1 && break
+                if echo "$CONTRIBS" | grep -qx "$m"; then OVERLAP=1; break; fi
+            done
+            if [[ "$OVERLAP" -eq 0 ]]; then
+                WARNS=$((WARNS+1))
+                first_m="$(echo "$MAINTAINERS" | head -1)"
+                FINDINGS+=("⚠ npm package \"$NPM_NAME\" published by \"$first_m\" — no visible overlap with repo owner or top 30 contributors")
+                FINDINGS+=("     https://www.npmjs.com/~$first_m")
+            else
+                FINDINGS+=("✓ npm publisher overlaps repo contributors")
+            fi
+
+            MODIFIED="$(echo "$NPM_JSON" | jq -r '.time.modified // empty')"
+            VERSIONS_COUNT="$(echo "$NPM_JSON" | jq -r '.versions | length')"
+            if [[ -n "$MODIFIED" && "$VERSIONS_COUNT" -gt 1 ]]; then
+                mod_age=$(age_days "$MODIFIED")
+                if [[ "$mod_age" -lt 7 ]]; then
+                    WARNS=$((WARNS+1))
+                    FINDINGS+=("⚠ npm package was modified within last 7 days — verify changelog matches release")
+                fi
+            fi
+        fi
+    fi
+fi
+
+if [[ "$CHECK8_RAN" -eq 0 ]]; then
+    SKIPS=$((SKIPS+1))
+    FINDINGS+=("· Provenance check skipped — no published Node/Python package found")
+fi
+```
