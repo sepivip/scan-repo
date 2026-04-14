@@ -77,3 +77,30 @@ Claude-side responsibility: check conversation history for prior scan-repo activ
 ```bash
 [[ -z "$BRANCH" ]] && BRANCH="$(gh api "repos/$OWNER_REPO" --jq .default_branch)"
 ```
+
+## Ecosystem detection
+
+```bash
+ROOT_TREE_JSON="$(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=0")"
+ROOT_FILES="$(echo "$ROOT_TREE_JSON" | jq -r '.tree[] | select(.type == "blob") | .path')"
+
+ECOSYSTEMS=""
+MARKERS=""
+add_marker() { MARKERS="$MARKERS $1"; }
+for f in $ROOT_FILES; do
+    case "$f" in
+        package.json)        ECOSYSTEMS="$ECOSYSTEMS node";   add_marker "package.json" ;;
+        pyproject.toml|setup.py|setup.cfg|requirements.txt)
+                             ECOSYSTEMS="$ECOSYSTEMS python"; add_marker "$f" ;;
+        Cargo.toml)          ECOSYSTEMS="$ECOSYSTEMS rust";   add_marker "Cargo.toml" ;;
+        go.mod)              ECOSYSTEMS="$ECOSYSTEMS go";     add_marker "go.mod" ;;
+        Gemfile)             ECOSYSTEMS="$ECOSYSTEMS ruby";   add_marker "Gemfile" ;;
+        pom.xml|build.gradle*) ECOSYSTEMS="$ECOSYSTEMS jvm";  add_marker "$f" ;;
+        composer.json)       ECOSYSTEMS="$ECOSYSTEMS php";    add_marker "composer.json" ;;
+        Makefile|build.sh|webpack.config.*|vite.config.*|rollup.config.*)
+                             add_marker "$f" ;;
+    esac
+done
+ECOSYSTEMS="$(echo "$ECOSYSTEMS" | xargs -n1 | sort -u | xargs)"
+[[ -z "$ECOSYSTEMS" ]] && ECOSYSTEMS="none"
+```

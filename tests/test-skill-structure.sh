@@ -28,5 +28,9 @@ assert_true "grep -q 'Step 3 — Branch resolution' '$SKILL'" \
     "skill: gate step 3 branch resolution"
 assert_true "grep -q 'extract_url' '$SKILL'" \
     "skill: calls extract_url helper"
+assert_true "grep -q '## Ecosystem detection' '$SKILL'" \
+    "skill: ecosystem detection section"
+assert_true "grep -q 'Cargo.toml' '$SKILL'" \
+    "skill: ecosystem detection includes Rust"
 
 report
