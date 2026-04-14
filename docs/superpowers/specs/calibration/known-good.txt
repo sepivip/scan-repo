@@ -1,0 +1,40 @@
+# scan-repo calibration — known-good repos
+# Format: one https://github.com/owner/repo URL per line, # for comments.
+# Curate with care: every URL here is a vote that the repo IS legitimate.
+#
+# Selection criteria:
+#   - established maintainership (multiple contributors, multi-year history)
+#   - widely depended on (real downstream usage on npm/PyPI/etc.)
+#   - covers a spread of ecosystems (Node, Python, Rust, Go, JVM, …)
+#   - covers a spread of project shapes (lib, CLI, framework, infra)
+
+# Node / npm
+https://github.com/facebook/react
+https://github.com/expressjs/express
+https://github.com/microsoft/TypeScript
+https://github.com/sveltejs/svelte
+https://github.com/vercel/next.js
+
+# Python
+https://github.com/tiangolo/fastapi
+https://github.com/django/django
+https://github.com/pallets/flask
+https://github.com/numpy/numpy
+https://github.com/pandas-dev/pandas
+
+# Rust
+https://github.com/BurntSushi/ripgrep
+https://github.com/sharkdp/fd
+https://github.com/sharkdp/bat
+
+# Go
+https://github.com/junegunn/fzf
+https://github.com/cli/cli
+
+# C / infrastructure
+https://github.com/curl/curl
+https://github.com/git/git
+https://github.com/htop-dev/htop
+
+# Anthropic / reference
+https://github.com/anthropics/claude-code

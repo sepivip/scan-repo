@@ -1,0 +1,28 @@
+# scan-repo calibration — known-bad repos
+# Format: one https://github.com/owner/repo URL per line, # for comments.
+#
+# WARNING: this file lists repositories that have been publicly identified
+# as malicious, fraudulent, or part of a fake-star / typosquat campaign.
+# Do NOT clone, install, or execute anything from any URL listed here.
+#
+# Sourcing:
+#   - GitHub takedown notices and DMCA archive
+#   - npm security advisories (https://github.com/advisories)
+#   - PyPI removal notices
+#   - Snyk / Socket.dev published reports
+#   - CMU StarScout dataset (Carnegie Mellon, 2024)
+#   - Zscaler ThreatLabz published campaign reports
+#   - Invariant Labs MCP advisories
+#
+# This list MUST be populated by the maintainer before calibration runs.
+# Stub entries are intentionally absent — fabricating malicious URLs would
+# both poison calibration and risk pointing the skill at innocent repos.
+#
+# When adding entries, include:
+#   - source (which advisory / report / dataset)
+#   - date observed
+#   - one-line nature of the issue (fake stars / postinstall malware /
+#     typosquat / supply-chain compromise / etc.)
+#
+# Example format:
+# https://github.com/{owner}/{repo}  # source: Snyk SNYK-JS-XXXX, 2026-02-14, postinstall infostealer

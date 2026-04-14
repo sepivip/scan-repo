@@ -1,0 +1,14 @@
+# Editors / OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Local install / test artifacts
+*.local
+docs/superpowers/specs/calibration/results-*.md.tmp
+tests/_smoke*.sh
+tests/_tmp_*
+
+# Shell caches
+.env.local
