@@ -83,4 +83,19 @@ assert_true "grep -q 'is_in_recognized_build_path' '$SKILL'" \
 assert_true "grep -q 'registry.npmjs.org' '$SKILL'" \
     "skill: check 8 hits npm registry"
 
+assert_true "grep -q '## Verdict & output' '$SKILL'" \
+    "skill: verdict & output section"
+assert_true "grep -q 'compute_verdict' '$SKILL'" \
+    "skill: full audit calls compute_verdict"
+assert_true "grep -q 'verdict_label' '$SKILL'" \
+    "skill: full audit calls verdict_label"
+assert_true "grep -q 'I.\?d suggest looking at' '$SKILL'" \
+    "skill: yellow directive closing"
+assert_true "grep -q 'I don.\?t recommend installing' '$SKILL'" \
+    "skill: red directive closing"
+assert_true "grep -q '## Edge cases' '$SKILL'" \
+    "skill: edge cases section"
+assert_true "grep -q '## Self-test' '$SKILL'" \
+    "skill: self-test section"
+
 report

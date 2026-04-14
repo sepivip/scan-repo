@@ -498,3 +498,63 @@ if [[ "$CHECK8_RAN" -eq 0 ]]; then
     FINDINGS+=("· Provenance check skipped — no published Node/Python package found")
 fi
 ```
+
+## Verdict & output (full audit)
+
+```bash
+VERDICT_COLOR="$(compute_verdict "$HC_WARNS" "$WARNS" "$SKIPS")"
+VERDICT_LINE="$(verdict_label "$VERDICT_COLOR")"
+
+TOP_WARN=""
+for f in "${FINDINGS[@]}"; do
+    if [[ "$f" == ⚠* ]]; then
+        TOP_WARN="${f#⚠ }"
+        break
+    fi
+done
+
+case "$VERDICT_COLOR" in
+    green)  CLOSING='Looks fine to install if you trust the source. Want me to go ahead and install it?' ;;
+    yellow) CLOSING="I'd suggest looking at \"${TOP_WARN}\" before deciding — want me to explain why that one's a concern?" ;;
+    red)    CLOSING="I don't recommend installing this without expert review. Want me to explain what's concerning, or help you find an alternative?" ;;
+    white)  CLOSING="I couldn't get enough information to assess this repo. Want me to retry, or look for alternatives?" ;;
+esac
+
+echo
+echo "$VERDICT_LINE"
+echo
+echo "Repo: $OWNER_REPO  (https://github.com/$OWNER_REPO)"
+echo "Ecosystem: $ECOSYSTEMS"
+echo
+echo "Findings"
+for f in "${FINDINGS[@]}"; do
+    echo "  $f"
+done
+echo
+echo "Known limitations of this scan: did not inspect transitive dependencies; did not"
+echo "execute or sandbox anything; thresholds are unvalidated heuristics."
+echo
+echo "$CLOSING"
+```
+
+## Edge cases
+
+- **Repo 404 / private:** `gh api repos/$OWNER_REPO` returns non-zero exit. Catch and print: `scan-repo: cannot access $OWNER_REPO (404 or private). No verdict.` then exit 0.
+- **`gh` not installed:** Print install link, exit 0.
+- **`gh` unauthenticated:** prepend warning to report.
+- **Rate limit hit mid-run:** mark check `skip`, continue.
+- **`curl` exceeds size/time limit:** treat as missing fetch; check emits `· skipped (fetch exceeded limit — possible DoS)`.
+- **`/scan-repo` with no URL:** slash command file short-circuits.
+
+## Self-test
+
+```bash
+if [[ "${1:-}" == "--self-test" ]]; then
+    GOOD_LIST="$HOME/.claude/skills/scan-repo/known-good.txt"
+    [[ ! -f "$GOOD_LIST" ]] && GOOD_LIST="$(dirname "$HELPERS")/known-good.txt"
+    URLS=( $(grep -vE '^[[:space:]]*(#|$)' "$GOOD_LIST") )
+    PICK="${URLS[$(( RANDOM % ${#URLS[@]} ))]}"
+    echo "self-test: scanning $PICK"
+    INPUT="Run a full audit with scan-repo on $PICK. Run all 8 checks." exec bash "$0"
+fi
+```
