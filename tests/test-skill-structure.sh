@@ -33,4 +33,19 @@ assert_true "grep -q '## Ecosystem detection' '$SKILL'" \
 assert_true "grep -q 'Cargo.toml' '$SKILL'" \
     "skill: ecosystem detection includes Rust"
 
+assert_true "grep -q '## Quick-check tier' '$SKILL'" \
+    "skill: quick-check tier section"
+assert_true "grep -q '### Q1 — Author profile' '$SKILL'" \
+    "skill: Q1 quick check"
+assert_true "grep -q '### Q2 — Repo basics' '$SKILL'" \
+    "skill: Q2 quick check"
+assert_true "grep -q '### Q6 — Install hook' '$SKILL'" \
+    "skill: Q6 quick check"
+assert_true "grep -qF 'is_benign_install_hook' '$SKILL'" \
+    "skill: Q6 calls benign allowlist helper"
+assert_true "grep -qF '🟢 nothing obviously wrong' '$SKILL'" \
+    "skill: quick-check green verdict line"
+assert_true "grep -qF '🟡 a few things look unusual' '$SKILL'" \
+    "skill: quick-check yellow verdict line"
+
 report

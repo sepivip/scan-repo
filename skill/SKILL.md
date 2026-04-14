@@ -104,3 +104,104 @@ done
 ECOSYSTEMS="$(echo "$ECOSYSTEMS" | xargs -n1 | sort -u | xargs)"
 [[ -z "$ECOSYSTEMS" ]] && ECOSYSTEMS="none"
 ```
+
+## Quick-check tier (MODE=quick)
+
+Three checks. Tighter thresholds than the full audit (a false alarm here trains users to ignore real ones).
+
+### Q1 — Author profile
+
+```bash
+AUTHOR_JSON="$(gh api "users/${OWNER_REPO%%/*}")"
+AUTHOR_CREATED="$(echo "$AUTHOR_JSON" | jq -r .created_at)"
+AUTHOR_REPOS="$(echo "$AUTHOR_JSON"   | jq -r .public_repos)"
+
+age=$(age_days "$AUTHOR_CREATED")
+
+Q1_RESULT=pass
+Q1_EVIDENCE="Author account ${age}d old, ${AUTHOR_REPOS} other repo(s)"
+if [[ "$age" -lt 30 && "$AUTHOR_REPOS" -lt 3 ]]; then
+    Q1_RESULT=warn
+fi
+```
+
+### Q2 — Repo basics
+
+```bash
+REPO_JSON="$(gh api "repos/$OWNER_REPO")"
+REPO_CREATED="$(echo "$REPO_JSON" | jq -r .created_at)"
+REPO_STARS="$(echo "$REPO_JSON"   | jq -r .stargazers_count)"
+ARCHIVED="$(echo "$REPO_JSON"     | jq -r .archived)"
+DISABLED="$(echo "$REPO_JSON"     | jq -r .disabled)"
+
+repo_age=$(age_days "$REPO_CREATED")
+[[ "$repo_age" -lt 1 ]] && repo_age=1
+stars_per_day=$(( REPO_STARS / repo_age ))
+
+Q2_RESULT=pass
+Q2_EVIDENCE="Repo ${repo_age}d old, ${REPO_STARS} stars (${stars_per_day}/day avg)"
+if [[ "$ARCHIVED" == "true" || "$DISABLED" == "true" ]]; then
+    Q2_RESULT=warn
+    Q2_EVIDENCE="Repo is archived/disabled — no longer maintained"
+elif [[ "$repo_age" -lt 14 && "$stars_per_day" -gt 500 ]]; then
+    Q2_RESULT=warn
+    Q2_EVIDENCE="${REPO_STARS} stars in ${repo_age}d (${stars_per_day}/day) — unusually fast"
+fi
+```
+
+### Q6 — Install hook presence + allowlist
+
+```bash
+fetch_raw() {
+    local file="$1"
+    curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+        "https://raw.githubusercontent.com/$OWNER_REPO/$BRANCH/$file" 2>/dev/null
+}
+
+Q6_RESULT=pass
+Q6_EVIDENCE="No install hooks found"
+Q6_FOUND_ANY=0
+
+if echo " $ECOSYSTEMS " | grep -q ' node '; then
+    PKG_JSON="$(fetch_raw package.json)"
+    if [[ -n "$PKG_JSON" ]]; then
+        for hook_name in preinstall install postinstall; do
+            hook="$(echo "$PKG_JSON" | jq -r ".scripts.$hook_name // empty")"
+            if [[ -n "$hook" ]]; then
+                Q6_FOUND_ANY=1
+                if ! is_benign_install_hook "$hook"; then
+                    Q6_RESULT=warn
+                    Q6_EVIDENCE="package.json $hook_name not on benign allowlist: \"$hook\""
+                fi
+            fi
+        done
+    fi
+fi
+
+if [[ "$Q6_FOUND_ANY" -eq 1 && "$Q6_RESULT" == "pass" ]]; then
+    Q6_EVIDENCE="Install hook(s) present, all on benign allowlist"
+fi
+```
+
+### Quick-check verdict and output
+
+```bash
+Q_WARNS=0
+for r in "$Q1_RESULT" "$Q2_RESULT" "$Q6_RESULT"; do
+    [[ "$r" == "warn" ]] && Q_WARNS=$((Q_WARNS+1))
+done
+
+VERDICT_COLOR="$(compute_verdict 0 "$Q_WARNS" 0)"
+
+if [[ "$VERDICT_COLOR" == "green" ]]; then
+    echo "[scan-repo 🟢 nothing obviously wrong (3 quick checks) — proceed if you trust the source. For full audit run /scan-repo https://github.com/$OWNER_REPO]"
+else
+    summary=""
+    [[ "$Q1_RESULT" == "warn" ]] && summary="$Q1_EVIDENCE"
+    [[ -z "$summary" && "$Q2_RESULT" == "warn" ]] && summary="$Q2_EVIDENCE"
+    [[ -z "$summary" && "$Q6_RESULT" == "warn" ]] && summary="$Q6_EVIDENCE"
+    echo "[scan-repo 🟡 a few things look unusual — $summary. Worth running /scan-repo https://github.com/$OWNER_REPO for the full audit (~30s) before installing.]"
+fi
+
+exit 0
+```
