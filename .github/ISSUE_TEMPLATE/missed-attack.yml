@@ -1,0 +1,42 @@
+name: Report a missed attack
+description: A malicious repo that scan-repo failed to flag
+title: "[MISS] <owner/repo>"
+labels: ["missed-attack"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do NOT link live malware** in the description. Instead, link to
+        a published advisory (Snyk, Socket, GHSA, academic paper).
+  - type: input
+    id: advisory
+    attributes:
+      label: Source advisory
+      description: Published URL identifying the repo as malicious
+      placeholder: https://github.com/advisories/GHSA-xxxx
+    validations:
+      required: true
+  - type: input
+    id: repo_url
+    attributes:
+      label: Repository URL
+      description: Only if the repo is still up on GitHub — otherwise leave blank
+      placeholder: https://github.com/owner/repo
+  - type: textarea
+    id: attack_vector
+    attributes:
+      label: Attack vector
+      description: What did the malicious repo do?
+    validations:
+      required: true
+  - type: textarea
+    id: scan_output
+    attributes:
+      label: scan-repo output
+      description: What did scan-repo say when you ran it on this repo?
+      render: text
+  - type: textarea
+    id: missing_signal
+    attributes:
+      label: What signal(s) would have caught this?
+      description: Proposal for a new check or threshold change

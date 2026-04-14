@@ -1,0 +1,49 @@
+name: Report a false positive
+description: scan-repo flagged a known-legitimate repository
+title: "[FP] <owner/repo>"
+labels: ["false-positive"]
+body:
+  - type: input
+    id: repo_url
+    attributes:
+      label: Repository URL
+      description: The github.com URL that was scanned
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: scan-repo output
+      description: Paste the full output (findings + verdict line).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why_legit
+    attributes:
+      label: Why is this repo legitimate?
+      description: Evidence — maintainership, downstream usage, known org, etc.
+    validations:
+      required: true
+  - type: dropdown
+    id: which_check
+    attributes:
+      label: Which check fired?
+      multiple: true
+      options:
+        - "1 — Author profile"
+        - "2 — Repo basics"
+        - "3 — Stargazer sample"
+        - "4 — Activity ratios"
+        - "6 — Install scripts"
+        - "7 — Binaries in tree"
+        - "8 — Provenance"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, bash version, gh version
+      placeholder: "macOS 14.4, bash 5.2.15, gh 2.42.0"
