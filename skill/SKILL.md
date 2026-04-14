@@ -205,3 +205,82 @@ fi
 
 exit 0
 ```
+
+## Full audit (MODE=full)
+
+Initialise accumulators:
+
+```bash
+WARNS=0
+HC_WARNS=0
+SKIPS=0
+declare -a FINDINGS
+```
+
+### Check 1 — Author profile (full)
+
+```bash
+AUTHOR_JSON="$(gh api "users/${OWNER_REPO%%/*}")"
+AUTHOR_CREATED="$(echo "$AUTHOR_JSON" | jq -r .created_at)"
+AUTHOR_REPOS="$(echo "$AUTHOR_JSON"   | jq -r .public_repos)"
+AUTHOR_FOLLOWERS="$(echo "$AUTHOR_JSON" | jq -r .followers)"
+age=$(age_days "$AUTHOR_CREATED")
+
+if [[ "$age" -lt 30 || "$AUTHOR_REPOS" -lt 3 || "$AUTHOR_FOLLOWERS" -eq 0 ]]; then
+    WARNS=$((WARNS+1))
+    FINDINGS+=("⚠ Author account created ${age} days ago, ${AUTHOR_REPOS} other repo(s), ${AUTHOR_FOLLOWERS} followers")
+    FINDINGS+=("     https://github.com/${OWNER_REPO%%/*}")
+else
+    FINDINGS+=("✓ Author has established history (${age}d account, ${AUTHOR_REPOS} repos, ${AUTHOR_FOLLOWERS} followers)")
+fi
+```
+
+### Check 2 — Repo basics (full)
+
+```bash
+REPO_JSON="$(gh api "repos/$OWNER_REPO")"
+REPO_CREATED="$(echo "$REPO_JSON" | jq -r .created_at)"
+REPO_STARS="$(echo "$REPO_JSON"   | jq -r .stargazers_count)"
+REPO_FORKS="$(echo "$REPO_JSON"   | jq -r .forks_count)"
+REPO_OPEN_ISSUES="$(echo "$REPO_JSON" | jq -r .open_issues_count)"
+ARCHIVED="$(echo "$REPO_JSON" | jq -r .archived)"
+DISABLED="$(echo "$REPO_JSON" | jq -r .disabled)"
+
+repo_age=$(age_days "$REPO_CREATED")
+[[ "$repo_age" -lt 1 ]] && repo_age=1
+stars_per_day=$(( REPO_STARS / repo_age ))
+
+if [[ "$ARCHIVED" == "true" || "$DISABLED" == "true" ]]; then
+    WARNS=$((WARNS+1))
+    FINDINGS+=("⚠ Repo is archived/disabled — no longer maintained")
+elif [[ "$repo_age" -lt 14 && "$stars_per_day" -gt 200 ]]; then
+    WARNS=$((WARNS+1))
+    FINDINGS+=("⚠ ${REPO_STARS} stars in ${repo_age}d (${stars_per_day}/day) — unusually fast for a young repo")
+else
+    age_human=$(printf '%dy %dm' $((repo_age/365)) $(( (repo_age%365)/30 )))
+    FINDINGS+=("✓ Repo age: ${age_human} (${REPO_STARS} stars, ${REPO_FORKS} forks)")
+fi
+```
+
+### Check 4 — Activity ratios
+
+```bash
+CONTRIBUTORS_LINK="$(gh api -i "repos/$OWNER_REPO/contributors?per_page=1" 2>/dev/null | grep -i '^link:' | head -1)"
+TOTAL_CONTRIBUTORS=1
+if [[ "$CONTRIBUTORS_LINK" =~ \&page=([0-9]+)\>\;\ rel=\"last\" ]]; then
+    TOTAL_CONTRIBUTORS="${BASH_REMATCH[1]}"
+fi
+
+if [[ "$REPO_STARS" -gt 5000 && "$TOTAL_CONTRIBUTORS" -le 2 && "$REPO_OPEN_ISSUES" -eq 0 ]]; then
+    WARNS=$((WARNS+1))
+    FINDINGS+=("⚠ ${REPO_STARS} stars but only ${TOTAL_CONTRIBUTORS} contributor(s) and 0 open issues — unusual for a popular repo")
+else
+    FINDINGS+=("✓ Activity: ${TOTAL_CONTRIBUTORS} contributor(s), ${REPO_OPEN_ISSUES} open issues")
+fi
+```
+
+### Check 5 — Star history link
+
+```bash
+FINDINGS+=("— Star history (eyeball): https://star-history.com/#${OWNER_REPO}&Date")
+```

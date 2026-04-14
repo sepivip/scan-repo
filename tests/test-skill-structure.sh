@@ -48,4 +48,17 @@ assert_true "grep -qF '🟢 nothing obviously wrong' '$SKILL'" \
 assert_true "grep -qF '🟡 a few things look unusual' '$SKILL'" \
     "skill: quick-check yellow verdict line"
 
+assert_true "grep -q '## Full audit' '$SKILL'" \
+    "skill: full audit section"
+assert_true "grep -q '### Check 1 — Author profile (full)' '$SKILL'" \
+    "skill: full check 1"
+assert_true "grep -q '### Check 2 — Repo basics (full)' '$SKILL'" \
+    "skill: full check 2"
+assert_true "grep -q '### Check 4 — Activity ratios' '$SKILL'" \
+    "skill: full check 4"
+assert_true "grep -q '### Check 5 — Star history link' '$SKILL'" \
+    "skill: full check 5"
+assert_true "grep -q 'star-history.com' '$SKILL'" \
+    "skill: star-history URL emitted"
+
 report
