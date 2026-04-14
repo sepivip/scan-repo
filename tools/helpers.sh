@@ -53,3 +53,24 @@ has_intent_token() {
     fi
     return 1
 }
+
+# age_days <iso8601_date>
+# Echoes the number of whole days between now and the given date.
+# Portable: tries GNU date first, falls back to BSD date.
+# On parse failure, echoes "0" and returns non-zero.
+age_days() {
+    local iso="$1"
+    local now_secs then_secs
+    now_secs=$(date -u +%s)
+    if then_secs=$(date -u -d "$iso" +%s 2>/dev/null); then
+        :
+    elif then_secs=$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null); then
+        :
+    elif then_secs=$(date -u -j -f "%Y-%m-%d" "${iso%%T*}" +%s 2>/dev/null); then
+        :
+    else
+        echo "0"
+        return 1
+    fi
+    echo $(( (now_secs - then_secs) / 86400 ))
+}

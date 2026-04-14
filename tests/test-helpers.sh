@@ -32,4 +32,18 @@ assert_false 'has_intent_token "here is a github url for reference"' \
 assert_false 'has_intent_token "the installer downloaded fine"' \
     "has_intent_token: installer (substring of install) → not a word match"
 
+# --- age_days (portable) ---
+# 2000-01-01 is thousands of days ago on any machine; verify it returns > 9000
+AGE=$(age_days "2000-01-01T00:00:00Z")
+assert_true "[[ $AGE -gt 9000 ]]" "age_days: year 2000 is > 9000 days ago"
+
+# A date in the near future should yield 0 or negative
+FUTURE="2099-01-01T00:00:00Z"
+F_AGE=$(age_days "$FUTURE")
+assert_true "[[ $F_AGE -lt 100 ]]" "age_days: far future is < 100 (non-positive)"
+
+# Bad input returns 0 and non-zero exit
+BAD=$(age_days "not-a-date" 2>/dev/null || true)
+assert_eq "0" "$BAD" "age_days: invalid input → 0"
+
 report
