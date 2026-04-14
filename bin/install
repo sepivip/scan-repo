@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# scan-repo one-liner installer.
+#
+# Usage:
+#   curl -sL https://raw.githubusercontent.com/sepivip/scan-repo/main/bin/install | bash
+#
+# Clones the repo to ~/.local/share/scan-repo and runs tools/install.sh.
+
+set -euo pipefail
+
+REPO_URL="https://github.com/sepivip/scan-repo"
+INSTALL_DIR="${SCAN_REPO_INSTALL_DIR:-$HOME/.local/share/scan-repo}"
+
+command -v git >/dev/null 2>&1 || { echo "install: git not found" >&2; exit 1; }
+command -v gh  >/dev/null 2>&1 || { echo "install: gh CLI not found — https://cli.github.com/" >&2; exit 1; }
+command -v jq  >/dev/null 2>&1 || { echo "install: jq not found — install jq first" >&2; exit 1; }
+
+if [[ -d "$INSTALL_DIR/.git" ]]; then
+    echo "install: updating existing checkout at $INSTALL_DIR"
+    git -C "$INSTALL_DIR" pull --ff-only
+else
+    echo "install: cloning $REPO_URL → $INSTALL_DIR"
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+fi
+
+bash "$INSTALL_DIR/tools/install.sh"
+
+echo
+echo "Next steps:"
+echo "  1. Open Claude Code"
+echo "  2. Try: /scan-repo https://github.com/anthropics/claude-code"
+echo
+echo "To uninstall:"
+echo "  rm -rf ~/.claude/skills/scan-repo"
+echo "  rm ~/.claude/commands/scan-repo.md"
+echo "  rm -rf $INSTALL_DIR"
