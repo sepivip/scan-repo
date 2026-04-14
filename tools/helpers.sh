@@ -74,3 +74,33 @@ age_days() {
     fi
     echo $(( (now_secs - then_secs) / 86400 ))
 }
+
+# is_benign_install_hook <hook_content>
+# Returns 0 if hook content exactly matches the known-benign allowlist.
+is_benign_install_hook() {
+    case "$1" in
+        "node-gyp rebuild"|"prebuild-install"|"node-pre-gyp install"|"electron-rebuild"|"husky install"|"husky")
+            return 0 ;;
+        *)
+            return 1 ;;
+    esac
+}
+
+# has_suspicious_pattern <hook_content>
+# Returns 0 if any suspicious pattern matches.
+has_suspicious_pattern() {
+    local content="$1"
+    if printf '%s' "$content" | grep -iqE '\b(curl|wget|node[[:space:]]+-e|python[[:space:]]+-c|eval|base64|atob)\b'; then
+        return 0
+    fi
+    if printf '%s' "$content" | grep -qE '(^|[^0-9])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9]|$)'; then
+        return 0
+    fi
+    if printf '%s' "$content" | grep -qiE '\.onion\b'; then
+        return 0
+    fi
+    if printf '%s' "$content" | grep -qE '\|[[:space:]]*(sh|bash)\b'; then
+        return 0
+    fi
+    return 1
+}
