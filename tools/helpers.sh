@@ -135,3 +135,44 @@ is_in_recognized_build_path() {
     esac
     return 1
 }
+
+# is_empty_profile <created_at_iso> <followers> <public_repos>
+# Returns 0 if the profile matches the empty pattern: zero followers AND
+# zero public repos AND account age < 90 days. Uses portable age_days.
+is_empty_profile() {
+    local created_at="$1"
+    local followers="$2"
+    local repos="$3"
+    [[ "$followers" -ne 0 ]] && return 1
+    [[ "$repos" -ne 0 ]] && return 1
+    local days
+    days=$(age_days "$created_at") || return 1
+    [[ "$days" -lt 90 ]]
+}
+
+# compute_verdict <high_confidence_warn_count> <total_warn_count> <skip_count>
+# Echoes one of: green | yellow | red | white
+compute_verdict() {
+    local hc="$1" warns="$2" skips="$3"
+    if [[ "$hc" -gt 0 ]]; then
+        echo "red"
+    elif [[ "$skips" -ge 3 ]]; then
+        echo "white"
+    elif [[ "$warns" -ge 1 ]]; then
+        echo "yellow"
+    else
+        echo "green"
+    fi
+}
+
+# verdict_label <verdict>
+# Echoes the soft, caveated label string for the given verdict color.
+verdict_label() {
+    case "$1" in
+        green)  echo "🟢 Nothing obviously wrong — proceed if you trust the source" ;;
+        yellow) echo "🟡 A few things look unusual — worth a closer look" ;;
+        red)    echo "🔴 Several things look concerning — recommend not installing without expert review" ;;
+        white)  echo "⚪ Couldn't gather enough signal — cannot assess" ;;
+        *)      echo "[scan-repo: unknown verdict state: $1]" ;;
+    esac
+}

@@ -100,4 +100,41 @@ assert_false 'is_in_recognized_build_path "target/foo" "package.json"' \
 assert_false 'is_in_recognized_build_path "src/foo.js" "package.json"' \
     "build path: src/ is not a build path"
 
+# --- is_empty_profile ---
+# Use today's date as "recent" and 2020-01-01 as "old" for cross-platform
+# reproducibility (no "30 days ago" which is GNU-specific).
+RECENT_ISO=$(date -u +%Y-%m-%dT00:00:00Z)
+OLD_ISO="2020-01-01T00:00:00Z"
+
+assert_true "is_empty_profile '$RECENT_ISO' 0 0" \
+    "empty profile: 0/0 + young account → empty"
+assert_false "is_empty_profile '$OLD_ISO' 0 0" \
+    "empty profile: 0/0 but old account → not empty"
+assert_false "is_empty_profile '$RECENT_ISO' 5 0" \
+    "empty profile: has followers → not empty"
+assert_false "is_empty_profile '$RECENT_ISO' 0 3" \
+    "empty profile: has repos → not empty"
+
+# --- compute_verdict ---
+assert_eq "green" "$(compute_verdict 0 0 0)" \
+    "verdict: 0 of everything → green"
+assert_eq "yellow" "$(compute_verdict 0 1 0)" \
+    "verdict: 1 warn → yellow"
+assert_eq "yellow" "$(compute_verdict 0 5 0)" \
+    "verdict: many warns no high-confidence → still yellow"
+assert_eq "red" "$(compute_verdict 1 0 0)" \
+    "verdict: 1 high-confidence → red"
+assert_eq "red" "$(compute_verdict 1 5 5)" \
+    "verdict: high-confidence wins over everything"
+assert_eq "white" "$(compute_verdict 0 0 3)" \
+    "verdict: 3 skips → white"
+assert_eq "white" "$(compute_verdict 0 1 4)" \
+    "verdict: skips threshold beats yellow"
+
+# --- verdict_label ---
+assert_true 'verdict_label green | grep -q "Nothing obviously wrong"' \
+    "verdict_label: green contains caveat"
+assert_true 'verdict_label red | grep -q "without expert review"' \
+    "verdict_label: red contains caveat"
+
 report
