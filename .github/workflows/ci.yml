@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install jq
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          # jq is pre-installed on windows-latest git-bash
+          jq --version
+
+      - name: Run helper tests
+        shell: bash
+        run: bash tests/test-helpers.sh
+
+      - name: Run skill structure tests
+        shell: bash
+        run: bash tests/test-skill-structure.sh
+
+      - name: Run calibration tests
+        shell: bash
+        run: bash tests/test-calibration.sh
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: tools
+          additional_files: tests/test-framework.sh tests/test-helpers.sh tests/test-skill-structure.sh tests/test-calibration.sh
