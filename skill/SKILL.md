@@ -81,8 +81,7 @@ Claude-side responsibility: check conversation history for prior scan-repo activ
 ## Ecosystem detection
 
 ```bash
-ROOT_TREE_JSON="$(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=0")"
-ROOT_FILES="$(echo "$ROOT_TREE_JSON" | jq -r '.tree[] | select(.type == "blob") | .path')"
+ROOT_FILES="$(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=0" --jq '.tree[] | select(.type == "blob") | .path')"
 
 ECOSYSTEMS=""
 MARKERS=""
@@ -112,9 +111,9 @@ Three checks. Tighter thresholds than the full audit (a false alarm here trains 
 ### Q1 — Author profile
 
 ```bash
-AUTHOR_JSON="$(gh api "users/${OWNER_REPO%%/*}")"
-AUTHOR_CREATED="$(echo "$AUTHOR_JSON" | jq -r .created_at)"
-AUTHOR_REPOS="$(echo "$AUTHOR_JSON"   | jq -r .public_repos)"
+IFS=$'\t' read -r AUTHOR_CREATED AUTHOR_REPOS < <(
+    gh api "users/${OWNER_REPO%%/*}" --jq '[.created_at, .public_repos] | @tsv'
+)
 
 age=$(age_days "$AUTHOR_CREATED")
 
@@ -128,11 +127,9 @@ fi
 ### Q2 — Repo basics
 
 ```bash
-REPO_JSON="$(gh api "repos/$OWNER_REPO")"
-REPO_CREATED="$(echo "$REPO_JSON" | jq -r .created_at)"
-REPO_STARS="$(echo "$REPO_JSON"   | jq -r .stargazers_count)"
-ARCHIVED="$(echo "$REPO_JSON"     | jq -r .archived)"
-DISABLED="$(echo "$REPO_JSON"     | jq -r .disabled)"
+IFS=$'\t' read -r REPO_CREATED REPO_STARS ARCHIVED DISABLED < <(
+    gh api "repos/$OWNER_REPO" --jq '[.created_at, .stargazers_count, .archived, .disabled] | @tsv'
+)
 
 repo_age=$(age_days "$REPO_CREATED")
 [[ "$repo_age" -lt 1 ]] && repo_age=1
@@ -166,7 +163,7 @@ if echo " $ECOSYSTEMS " | grep -q ' node '; then
     PKG_JSON="$(fetch_raw package.json)"
     if [[ -n "$PKG_JSON" ]]; then
         for hook_name in preinstall install postinstall; do
-            hook="$(echo "$PKG_JSON" | jq -r ".scripts.$hook_name // empty")"
+            hook="$(npm_script_hook "$PKG_JSON" "$hook_name")"
             if [[ -n "$hook" ]]; then
                 Q6_FOUND_ANY=1
                 if ! is_benign_install_hook "$hook"; then
@@ -220,10 +217,9 @@ declare -a FINDINGS
 ### Check 1 — Author profile (full)
 
 ```bash
-AUTHOR_JSON="$(gh api "users/${OWNER_REPO%%/*}")"
-AUTHOR_CREATED="$(echo "$AUTHOR_JSON" | jq -r .created_at)"
-AUTHOR_REPOS="$(echo "$AUTHOR_JSON"   | jq -r .public_repos)"
-AUTHOR_FOLLOWERS="$(echo "$AUTHOR_JSON" | jq -r .followers)"
+IFS=$'\t' read -r AUTHOR_CREATED AUTHOR_REPOS AUTHOR_FOLLOWERS < <(
+    gh api "users/${OWNER_REPO%%/*}" --jq '[.created_at, .public_repos, .followers] | @tsv'
+)
 age=$(age_days "$AUTHOR_CREATED")
 
 if [[ "$age" -lt 30 || "$AUTHOR_REPOS" -lt 3 || "$AUTHOR_FOLLOWERS" -eq 0 ]]; then
@@ -238,13 +234,9 @@ fi
 ### Check 2 — Repo basics (full)
 
 ```bash
-REPO_JSON="$(gh api "repos/$OWNER_REPO")"
-REPO_CREATED="$(echo "$REPO_JSON" | jq -r .created_at)"
-REPO_STARS="$(echo "$REPO_JSON"   | jq -r .stargazers_count)"
-REPO_FORKS="$(echo "$REPO_JSON"   | jq -r .forks_count)"
-REPO_OPEN_ISSUES="$(echo "$REPO_JSON" | jq -r .open_issues_count)"
-ARCHIVED="$(echo "$REPO_JSON" | jq -r .archived)"
-DISABLED="$(echo "$REPO_JSON" | jq -r .disabled)"
+IFS=$'\t' read -r REPO_CREATED REPO_STARS REPO_FORKS REPO_OPEN_ISSUES ARCHIVED DISABLED < <(
+    gh api "repos/$OWNER_REPO" --jq '[.created_at, .stargazers_count, .forks_count, .open_issues_count, .archived, .disabled] | @tsv'
+)
 
 repo_age=$(age_days "$REPO_CREATED")
 [[ "$repo_age" -lt 1 ]] && repo_age=1
@@ -293,8 +285,7 @@ else
 
     sample_one_page() {
         local page="$1"
-        gh api "repos/$OWNER_REPO/stargazers?per_page=$PER_PAGE&page=$page" \
-            | jq -r '.[].login'
+        gh api "repos/$OWNER_REPO/stargazers?per_page=$PER_PAGE&page=$page" --jq '.[].login'
     }
 
     PAGE1_LOGINS="$(sample_one_page 1)"
@@ -302,12 +293,11 @@ else
 
     classify_login() {
         local login="$1"
-        local user_json
-        user_json="$(gh api "users/$login" 2>/dev/null)" || { echo ok; return; }
         local created followers repos
-        created="$(echo "$user_json" | jq -r .created_at)"
-        followers="$(echo "$user_json" | jq -r .followers)"
-        repos="$(echo "$user_json"    | jq -r .public_repos)"
+        IFS=$'\t' read -r created followers repos < <(
+            gh api "users/$login" --jq '[.created_at, .followers, .public_repos] | @tsv' 2>/dev/null
+        ) || { echo ok; return; }
+        [[ -z "$created" ]] && { echo ok; return; }
         if is_empty_profile "$created" "$followers" "$repos"; then
             echo empty
         else
@@ -370,7 +360,7 @@ inspect_node_hooks() {
     [[ -z "$pkg" ]] && return
     for hook_name in preinstall install postinstall; do
         local hook
-        hook="$(echo "$pkg" | jq -r ".scripts.$hook_name // empty")"
+        hook="$(npm_script_hook "$pkg" "$hook_name")"
         [[ -z "$hook" ]] && continue
         if has_suspicious_pattern "$hook"; then
             WARNS=$((WARNS+1))
@@ -417,7 +407,6 @@ FINDINGS+=("       (note: transitive deps not scanned — known v1 limitation)")
 ### Check 7 — Binaries in tree
 
 ```bash
-TREE_JSON="$(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=1")"
 BIN_FOUND=0
 BIN_SHOWN=0
 TOTAL_BIN_HITS=0
@@ -441,8 +430,7 @@ while IFS=$'\t' read -r path size; do
         fi
         BIN_FOUND=1
     fi
-done < <(echo "$TREE_JSON" \
-    | jq -r '.tree[] | select(.type == "blob") | "\(.path)\t\(.size // 0)"')
+done < <(gh api "repos/$OWNER_REPO/git/trees/$BRANCH?recursive=1" --jq '.tree[] | select(.type == "blob") | "\(.path)\t\(.size // 0)"')
 
 if [[ "$BIN_FOUND" -eq 1 && "$BIN_SHOWN" -lt "$TOTAL_BIN_HITS" ]]; then
     FINDINGS+=("     (… and $((TOTAL_BIN_HITS - BIN_SHOWN)) more — list with: gh api repos/$OWNER_REPO/git/trees/$BRANCH?recursive=1)")
@@ -457,21 +445,21 @@ CHECK8_RAN=0
 
 if echo " $ECOSYSTEMS " | grep -q ' node ' && [[ -n "${PKG_JSON:-}" ]]; then
     CHECK8_RAN=1
-    NPM_NAME="$(echo "$PKG_JSON" | jq -r '.name // empty')"
+    # Extract npm package name from package.json via a simple grep
+    NPM_NAME="$(printf '%s' "$PKG_JSON" | grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/^[^:]*:[[:space:]]*"//; s/"$//')"
     if [[ -n "$NPM_NAME" ]]; then
         NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
             "https://registry.npmjs.org/$NPM_NAME" 2>/dev/null)"
         if [[ -n "$NPM_JSON" ]]; then
-            MAINTAINERS="$(echo "$NPM_JSON" | jq -r '.maintainers[]?.name' | sort -u)"
-            CONTRIBS="$(gh api "repos/$OWNER_REPO/contributors?per_page=30" \
-                        | jq -r '.[].login' | sort -u)"
+            MAINTAINERS="$(npm_maintainer_names "$NPM_JSON")"
+            CONTRIBS="$(gh api "repos/$OWNER_REPO/contributors?per_page=30" --jq '.[].login' | sort -u)"
             OWNER="${OWNER_REPO%%/*}"
             OVERLAP=0
             for m in $MAINTAINERS; do
                 [[ "$m" == "$OWNER" ]] && OVERLAP=1 && break
                 if echo "$CONTRIBS" | grep -qx "$m"; then OVERLAP=1; break; fi
             done
-            if [[ "$OVERLAP" -eq 0 ]]; then
+            if [[ "$OVERLAP" -eq 0 && -n "$MAINTAINERS" ]]; then
                 WARNS=$((WARNS+1))
                 first_m="$(echo "$MAINTAINERS" | head -1)"
                 FINDINGS+=("⚠ npm package \"$NPM_NAME\" published by \"$first_m\" — no visible overlap with repo owner or top 30 contributors")
@@ -480,9 +468,8 @@ if echo " $ECOSYSTEMS " | grep -q ' node ' && [[ -n "${PKG_JSON:-}" ]]; then
                 FINDINGS+=("✓ npm publisher overlaps repo contributors")
             fi
 
-            MODIFIED="$(echo "$NPM_JSON" | jq -r '.time.modified // empty')"
-            VERSIONS_COUNT="$(echo "$NPM_JSON" | jq -r '.versions | length')"
-            if [[ -n "$MODIFIED" && "$VERSIONS_COUNT" -gt 1 ]]; then
+            MODIFIED="$(npm_modified_date "$NPM_JSON")"
+            if [[ -n "$MODIFIED" ]]; then
                 mod_age=$(age_days "$MODIFIED")
                 if [[ "$mod_age" -lt 7 ]]; then
                     WARNS=$((WARNS+1))

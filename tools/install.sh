@@ -19,8 +19,8 @@ for f in "$SKILL_SRC" "$HELPERS_SRC" "$COMMAND_SRC" "$GOOD_LIST_SRC"; do
 done
 
 # Check dependencies
-command -v gh >/dev/null 2>&1 || { echo "install: gh CLI not found — https://cli.github.com/" >&2; exit 1; }
-command -v jq >/dev/null 2>&1 || { echo "install: jq not found — install jq first" >&2; exit 1; }
+command -v gh   >/dev/null 2>&1 || { echo "install: gh CLI not found — https://cli.github.com/" >&2; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "install: curl not found — install curl first" >&2; exit 1; }
 
 mkdir -p "$SKILL_DIR" "$COMMAND_DIR"
 

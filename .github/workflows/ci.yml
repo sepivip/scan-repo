@@ -16,20 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install jq
-
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Verify required tools
         shell: bash
         run: |
-          # jq is pre-installed on windows-latest git-bash
-          jq --version
+          gh --version
+          curl --version | head -1
 
       - name: Run helper tests
         shell: bash

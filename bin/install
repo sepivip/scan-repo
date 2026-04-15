@@ -11,9 +11,9 @@ set -euo pipefail
 REPO_URL="https://github.com/sepivip/scan-repo"
 INSTALL_DIR="${SCAN_REPO_INSTALL_DIR:-$HOME/.local/share/scan-repo}"
 
-command -v git >/dev/null 2>&1 || { echo "install: git not found" >&2; exit 1; }
-command -v gh  >/dev/null 2>&1 || { echo "install: gh CLI not found — https://cli.github.com/" >&2; exit 1; }
-command -v jq  >/dev/null 2>&1 || { echo "install: jq not found — install jq first" >&2; exit 1; }
+command -v git  >/dev/null 2>&1 || { echo "install: git not found" >&2; exit 1; }
+command -v gh   >/dev/null 2>&1 || { echo "install: gh CLI not found — https://cli.github.com/" >&2; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "install: curl not found" >&2; exit 1; }
 
 if [[ -d "$INSTALL_DIR/.git" ]]; then
     echo "install: updating existing checkout at $INSTALL_DIR"

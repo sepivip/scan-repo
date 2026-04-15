@@ -83,7 +83,7 @@ bash tests/test-skill-structure.sh   # structural validation
 bash tests/test-calibration.sh       # calibration script tests
 ```
 
-Required tools: `bash` 4+, `gh` (authenticated), `curl`, `jq`.
+Required tools: `bash` 4+, `gh` (authenticated), and `curl`. No other runtime dependencies — JSON parsing is delegated to gh's built-in `--jq` filter.
 
 ## Pull request checklist
 
@@ -96,7 +96,7 @@ Required tools: `bash` 4+, `gh` (authenticated), `curl`, `jq`.
 
 ## Code style
 
-- Pure bash; no external deps beyond coreutils, `gh`, `curl`, `jq`.
+- Pure bash; no external deps beyond coreutils, `gh`, and `curl`. Use `gh api --jq` for any JSON parsing of GitHub responses.
 - Cross-platform: test with GNU date (Linux) *and* BSD date (macOS).
 - Short functions with a one-line comment describing purpose and return.
 - Tests for every deterministic helper.

@@ -46,7 +46,7 @@ plain English on the next turn.
 
 ## Install
 
-Requires `bash`, `gh` (authenticated), `curl`, `jq`.
+Requires `bash`, `gh` (authenticated), and `curl`. No other runtime dependencies.
 
 **One-liner:**
 ```

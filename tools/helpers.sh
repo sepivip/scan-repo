@@ -176,3 +176,45 @@ verdict_label() {
         *)      echo "[scan-repo: unknown verdict state: $1]" ;;
     esac
 }
+
+# npm_script_hook <package_json_content> <hook_name>
+# Extract the value of scripts.<hook_name> from package.json content.
+# Returns empty string if the scripts object is missing or the hook is not set.
+# Uses a two-step grep: isolate the "scripts": { ... } block first so we do not
+# match hook names that might appear elsewhere (dependency names, etc).
+# Assumption: simple string values, no embedded escaped quotes.
+npm_script_hook() {
+    local pkg="$1" hook_name="$2"
+    local scripts
+    scripts=$(printf '%s' "$pkg" | grep -oE '"scripts"[[:space:]]*:[[:space:]]*\{[^}]*\}' | head -1)
+    [[ -z "$scripts" ]] && return 0
+    printf '%s' "$scripts" \
+        | grep -oE "\"$hook_name\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+        | head -1 \
+        | sed -E 's/^[^:]*:[[:space:]]*"//; s/"$//'
+}
+
+# npm_maintainer_names <npm_registry_json>
+# Extract all maintainer names from an npm registry response, sorted & unique.
+# Primitive: isolates the maintainers array first, then grabs "name":"..." within.
+npm_maintainer_names() {
+    local json="$1"
+    local arr
+    arr=$(printf '%s' "$json" | grep -oE '"maintainers"[[:space:]]*:[[:space:]]*\[[^]]*\]' | head -1)
+    [[ -z "$arr" ]] && return 0
+    printf '%s' "$arr" \
+        | grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+        | sed -E 's/^[^:]*:[[:space:]]*"//; s/"$//' \
+        | sort -u
+}
+
+# npm_modified_date <npm_registry_json>
+# Extract time.modified (last-publish timestamp) from an npm registry response.
+# Returns empty if not found.
+npm_modified_date() {
+    local json="$1"
+    printf '%s' "$json" \
+        | grep -oE '"modified"[[:space:]]*:[[:space:]]*"[^"]*"' \
+        | head -1 \
+        | sed -E 's/^[^:]*:[[:space:]]*"//; s/"$//'
+}
