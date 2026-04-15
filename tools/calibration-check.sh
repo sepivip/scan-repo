@@ -15,8 +15,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-GOOD_LIST="$REPO_ROOT/docs/superpowers/specs/calibration/known-good.txt"
-JUSTIFIED="$REPO_ROOT/docs/superpowers/specs/calibration/justified-warns.md"
+GOOD_LIST="$REPO_ROOT/calibration/known-good.txt"
+JUSTIFIED="$REPO_ROOT/calibration/justified-warns.md"
 THRESHOLD=3
 DRY_RUN=0
 

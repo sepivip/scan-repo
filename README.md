@@ -81,9 +81,6 @@ Or just ask naturally: *"should I install https://github.com/foo/bar?"*
 | 7 | Binaries in tree | forbidden installers (.exe, .msi, .deb…) by path |
 | 8 | Provenance | npm/PyPI publisher overlap with repo contributors |
 
-Full design rationale:
-[`docs/superpowers/specs/2026-04-14-scan-repo-design.md`](docs/superpowers/specs/2026-04-14-scan-repo-design.md).
-
 ## What scan-repo is NOT
 
 - **Not a safety guarantee.** Clean verdicts are expected on

@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_SRC="$REPO_ROOT/skill/SKILL.md"
 HELPERS_SRC="$REPO_ROOT/tools/helpers.sh"
 COMMAND_SRC="$REPO_ROOT/skill/scan-repo.command.md"
-GOOD_LIST_SRC="$REPO_ROOT/docs/superpowers/specs/calibration/known-good.txt"
+GOOD_LIST_SRC="$REPO_ROOT/calibration/known-good.txt"
 
 SKILL_DIR="$HOME/.claude/skills/scan-repo"
 COMMAND_DIR="$HOME/.claude/commands"

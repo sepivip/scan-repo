@@ -13,9 +13,6 @@ warmly welcomed.
 4. Read-only. Never clones, never executes anything from target repos.
 5. Cross-platform: Linux, macOS, Windows (git-bash, msys2).
 
-Read `docs/superpowers/specs/2026-04-14-scan-repo-design.md` for the
-full rationale.
-
 ## Ways to contribute
 
 ### Report a false positive
@@ -30,7 +27,7 @@ You ran scan-repo on a repo you know is legitimate and got a warn or
 You found a malicious repo that scan-repo failed to flag.
 
 → Open an issue using the **missed-attack** template. These go into
-`docs/superpowers/specs/calibration/known-bad.txt` once triaged.
+`calibration/known-bad.txt` once triaged.
 
 ### Propose a new check
 
@@ -44,14 +41,14 @@ You found a malicious repo that scan-repo failed to flag.
 
 ### Contribute a known-good URL
 
-Add to `docs/superpowers/specs/calibration/known-good.txt`.
+Add to `calibration/known-good.txt`.
 Requirements:
 - Multi-year history, multiple contributors, real downstream usage.
 - A short comment explaining why it's a good test case.
 
 ### Contribute a known-bad URL
 
-Add to `docs/superpowers/specs/calibration/known-bad.txt`. Requirements:
+Add to `calibration/known-bad.txt`. Requirements:
 - Sourced from a published advisory (Snyk, Socket.dev, GitHub Security
   Advisories, academic dataset).
 - The source of the label must be documented in the line comment.
@@ -68,7 +65,7 @@ Calibration proposals are welcome. Workflow:
 3. Run `tools/calibration-check.sh` against the known-good list.
 4. If the change introduces new warns on known-good repos, either:
    - Tune further, or
-   - Add to `docs/superpowers/specs/calibration/justified-warns.md`
+   - Add to `calibration/justified-warns.md`
      with a written justification.
 
 ## Development setup

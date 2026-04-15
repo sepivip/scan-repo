@@ -12,7 +12,6 @@ Motivation / linked issue.
 - [ ] If I changed `skill/SKILL.md` or `tools/helpers.sh`, calibration passes
       (the pre-commit hook enforces this)
 - [ ] I've updated `CHANGELOG.md` under "Unreleased"
-- [ ] I've read the design spec (`docs/superpowers/specs/`)
 
 ## For new checks or threshold changes
 

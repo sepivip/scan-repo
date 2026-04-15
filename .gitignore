@@ -6,9 +6,15 @@ Thumbs.db
 
 # Local install / test artifacts
 *.local
-docs/superpowers/specs/calibration/results-*.md.tmp
+calibration/results-*.md.tmp
 tests/_smoke*.sh
 tests/_tmp_*
 
 # Shell caches
 .env.local
+
+# Claude Code session metadata (scheduler locks, etc.)
+.claude/
+
+# In-session memory (Claude Code 'remember' plugin)
+.remember/
