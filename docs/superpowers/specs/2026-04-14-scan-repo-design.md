@@ -296,7 +296,7 @@ commands plus interpretation rules — not a compiled script.
 Every `curl` invocation MUST include:
 
 ```
-curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL ...
+curl --max-time 10 --max-filesize 1048576 --fail -sL ...
 ```
 
 A malicious repo can serve a multi-GB `README.md` or hang the

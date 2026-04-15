@@ -82,6 +82,8 @@ assert_true "grep -q 'is_in_recognized_build_path' '$SKILL'" \
     "skill: check 7 calls build-path helper"
 assert_true "grep -q 'registry.npmjs.org' '$SKILL'" \
     "skill: check 8 hits npm registry"
+assert_false "grep -q 'fail-with-body' '$SKILL'" \
+    "skill: curl uses --fail not --fail-with-body (avoids returning 404 page as content)"
 
 assert_true "grep -q '## Verdict & output' '$SKILL'" \
     "skill: verdict & output section"

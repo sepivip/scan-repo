@@ -1461,7 +1461,7 @@ fi
 \`\`\`bash
 fetch_raw() {
     local file="$1"
-    curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+    curl --max-time 10 --max-filesize 1048576 --fail -sL \
         "https://raw.githubusercontent.com/$OWNER_REPO/$BRANCH/$file" 2>/dev/null
 }
 
@@ -1891,7 +1891,7 @@ if echo " $ECOSYSTEMS " | grep -q ' node ' && [[ -n "${PKG_JSON:-}" ]]; then
     CHECK8_RAN=1
     NPM_NAME="$(echo "$PKG_JSON" | jq -r '.name // empty')"
     if [[ -n "$NPM_NAME" ]]; then
-        NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+        NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail -sL \
             "https://registry.npmjs.org/$NPM_NAME" 2>/dev/null)"
         if [[ -n "$NPM_JSON" ]]; then
             MAINTAINERS="$(echo "$NPM_JSON" | jq -r '.maintainers[]?.name' | sort -u)"

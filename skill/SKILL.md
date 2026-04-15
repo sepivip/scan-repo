@@ -151,7 +151,7 @@ fi
 ```bash
 fetch_raw() {
     local file="$1"
-    curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+    curl --max-time 10 --max-filesize 1048576 --fail -sL \
         "https://raw.githubusercontent.com/$OWNER_REPO/$BRANCH/$file" 2>/dev/null
 }
 
@@ -448,7 +448,7 @@ if echo " $ECOSYSTEMS " | grep -q ' node ' && [[ -n "${PKG_JSON:-}" ]]; then
     # Extract npm package name from package.json via a simple grep
     NPM_NAME="$(printf '%s' "$PKG_JSON" | grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/^[^:]*:[[:space:]]*"//; s/"$//')"
     if [[ -n "$NPM_NAME" ]]; then
-        NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail-with-body -sL \
+        NPM_JSON="$(curl --max-time 10 --max-filesize 1048576 --fail -sL \
             "https://registry.npmjs.org/$NPM_NAME" 2>/dev/null)"
         if [[ -n "$NPM_JSON" ]]; then
             MAINTAINERS="$(npm_maintainer_names "$NPM_JSON")"
